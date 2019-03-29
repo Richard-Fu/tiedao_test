@@ -115,6 +115,7 @@ class Login(object):
 		
 	def login(self):
 		rant = self.cut()
+		time.sleep(2)
 		ran = rant['pic_str']
 		print(type(rant),rant)
 		user = self.driver.find_element_by_id('username')
@@ -140,8 +141,8 @@ class Login(object):
 		print(url_return)
 		if a == url_return:
 			print('重新登陆！！！')
-			self.login()
-		
+			return 1
+		return 0
 		
 def get_soup(url,cookies=''):
 	if cookies:
@@ -219,7 +220,13 @@ def course(url,cookie):
 			print(content)
 			classList.append(content)
 	
-			
+def init_week():
+	try:
+		item = db[MONGE_FIND].insert({'title':'week','week':5,'day':5})
+		return item
+	except Exception:
+		print('失败')
+	
 def room(url,cookie,class_num):
 	'''
 	首先构建表单
@@ -320,9 +327,18 @@ def room(url,cookie,class_num):
 			items.append(content)
 		print('+++++++++++++++++++++++++++++')
 	for item in items:
-		print(item[3])
+		if not item[3].find('基'):
+			item[3] = item[3].replace('基','基教')
+			print(item[3],11)
+		elif not item[3].find('土'):
+			item[3] = item[3].replace('土','土木')
+			print(item[3],22)
+		else:
+			print(item[3])
+			
+		
 	room_object['class_num'] = class_num
-	room_object['rooms'] = items
+	room_object['classes'] = items
 	save_to_monge(room_object)
 	
 def when_week():
@@ -337,13 +353,16 @@ def when_week():
 	if day_num > day:
 		db[MONGE_FIND].update_one({'title':'week'},{'$set':{'day':day_num}})
 	
-	
 				
 
 if __name__ == '__main__':
+	
+	# init_week()
 	when_week()
 	login = Login()
-	login.login()
+	while login.login():
+		login1 = Login()
+		login1.login()
 	
 	
 	room_url = 'http://tiedao.vatuu.com/vatuu/CourseAction'
