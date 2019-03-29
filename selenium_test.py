@@ -9,9 +9,36 @@ import time
 from PIL import Image
 from hashlib import md5
 from chaojiying import Chaojiying_Client
+import datetime
 import os
 import json
+import pymongo
 
+MONGO_URL = 'localhost'
+MONGO_DB = 'python'
+MONGE_COLLECTION = 'rooms'
+MONGE_FIND = 'week'
+client = pymongo.MongoClient(MONGO_URL)
+db = client[MONGO_DB]
+
+def save_to_monge(result):
+	"""
+	保存到 mongeDb
+	
+	:param result: 结果
+	"""
+	try:
+		if db[MONGE_COLLECTION].insert(result):
+			print('存储成功')
+	except Exception:
+		print('存储失败')
+
+def find_from_monge():
+	try:
+		item = db[MONGE_FIND].find_one({'title':'week'})
+		return item
+	except Exception:
+		print('失败')
 
 class Login(object): 
 
@@ -104,6 +131,16 @@ class Login(object):
 		print(type(ran),ran)
 		ranstring.send_keys(ran)
 		confirm.click()
+		time.sleep(2)
+		url = 'http://tiedao.vatuu.com/vatuu/PublicInfoQueryAction?setAction=queryStudent'
+		url_return = 'http://tiedao.vatuu.com:80/service/login.html?returnUrl=return'
+		soup = get_soup(url,{'JSESSIONID':self.cookie})
+		a = soup.find('a')['href']
+		print(a)
+		print(url_return)
+		if a == url_return:
+			print('重新登陆！！！')
+			self.login()
 		
 		
 def get_soup(url,cookies=''):
@@ -183,21 +220,34 @@ def course(url,cookie):
 			classList.append(content)
 	
 			
-def room(url,cookie):
+def room(url,cookie,class_num):
 	'''
 	首先构建表单
 	'''
-	week = input('请输入周数：')
-	day_num = input('请输入星期几：')
-	class_num = input('请输入：\
-	1：第一二节\
-	2：第三四节\
-	3：整个上午\
-	4：第六七节\
-	5：第八九节\
-	6：整个下午\
-	7：晚自习')
-	week = pow(2,int(week)-1)
+	
+	room_object = {}
+	d=datetime.datetime.now()
+
+	class_num = class_num
+	# week = input('请输入周数：')
+	# week = '5'
+	# day_num = d.weekday()+1
+	item = find_from_monge()
+	week = item['week']
+	day_num = item['day']
+	room_object['week'] = week
+	room_object['day'] = day_num
+	print(day_num)
+	# class_num = input('请输入：\
+	# 1：第一二节\
+	# 2：第三四节\
+	# 3：整个上午\
+	# 4：第六七节\
+	# 5：第八九节\
+	# 6：整个下午\
+	# 7：晚自习')
+	day_num = pow(2,day_num-1)
+	week = pow(2,week-1)
 
 	day_time = ''
 	
@@ -246,8 +296,9 @@ def room(url,cookie):
 	soup = BeautifulSoup(html_utf(r.content), 'lxml')
 	table = soup.find('table',attrs={'class':'table_gray'})
 	trs = table.find_all('tr')
-	contents = []
+	items = []
 	for tr in trs:
+		
 		ths = tr.find_all('th')
 		if ths:
 			for th in ths:
@@ -259,27 +310,51 @@ def room(url,cookie):
 			for td in tds:
 				res = td.find_all(text=True)
 				strs = ''
+				item = []
 				for s in res:
+					s = s.strip('\n')
 					strs+=s
 				strs = strs.strip()
 				print(strs,' || ',end='')
-				contents.append(strs)
+				content.append(strs)
+			items.append(content)
 		print('+++++++++++++++++++++++++++++')
+	for item in items:
+		print(item[3])
+	room_object['class_num'] = class_num
+	room_object['rooms'] = items
+	save_to_monge(room_object)
 	
-			
+def when_week():
+	d = datetime.datetime.now()
+	item = find_from_monge()
+	week = item['week']
+	day = item['day']
+	day_num = d.weekday()+1
+	# day_num = 1
+	if day == 7 and day_num == 1:
+		db[MONGE_FIND].update_one({'title':'week'},{'$set':{'week':week+1,'day':day_num}})
+	if day_num > day:
+		db[MONGE_FIND].update_one({'title':'week'},{'$set':{'day':day_num}})
+	
+	
 				
-	
+
 if __name__ == '__main__':
+	when_week()
 	login = Login()
 	login.login()
-	time.sleep(2)
-	course_url = 'http://tiedao.vatuu.com/vatuu/CourseAction?setAction=userCourseScheduleTable\
-		&viewType=studentQueryCourseList&selectTableType=ThisTerm&queryType=student'
+	
+	
 	room_url = 'http://tiedao.vatuu.com/vatuu/CourseAction'
+	for i in range(1,8):
+		room(room_url,login.cookie,str(i))
+	
+	# course_url = 'http://tiedao.vatuu.com/vatuu/CourseAction?setAction=userCourseScheduleTable\
+		# &viewType=studentQueryCourseList&selectTableType=ThisTerm&queryType=student'
 	# score(login.url,login.cookie)
-	course(course_url,login.cookie)
-	for i in range(1,100):
-		room(room_url,login.cookie)
+	# course(course_url,login.cookie)
+	
 	
 """
 登陆功能完善，比如验证码错误，密码错误等。
