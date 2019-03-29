@@ -109,6 +109,7 @@ class Login(object):
 		picture.save(src)
 		im = open(src, 'rb').read()													
 		ran =  self.chaojiying.PostPic(im, 1902)
+		print(ran)
 		return ran
 	
 	
@@ -116,6 +117,7 @@ class Login(object):
 	def login(self):
 		rant = self.cut()
 		time.sleep(2)
+		ran_id = rant['pic_id']
 		ran = rant['pic_str']
 		print(type(rant),rant)
 		user = self.driver.find_element_by_id('username')
@@ -140,6 +142,7 @@ class Login(object):
 		print(a)
 		print(url_return)
 		if a == url_return:
+			self.chaojiying.ReportError(ran_id)
 			print('重新登陆！！！')
 			return 1
 		return 0
@@ -360,9 +363,13 @@ if __name__ == '__main__':
 	# init_week()
 	when_week()
 	login = Login()
-	while login.login():
+	for i in range(1,8):
 		login1 = Login()
-		login1.login()
+		if login1.login():
+			continue
+		else:
+			login = login1
+			break
 	
 	
 	room_url = 'http://tiedao.vatuu.com/vatuu/CourseAction'
