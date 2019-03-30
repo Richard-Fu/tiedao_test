@@ -13,6 +13,8 @@ import datetime
 import os
 import json
 import pymongo
+import time
+from apscheduler.schedulers.background import BlockingScheduler
 
 MONGO_URL = 'localhost'
 MONGO_DB = 'python'
@@ -356,10 +358,7 @@ def when_week():
 	if day_num > day:
 		db[MONGE_FIND].update_one({'title':'week'},{'$set':{'day':day_num}})
 	
-				
-
-if __name__ == '__main__':
-	
+def my_test():
 	# init_week()
 	when_week()
 	login = Login()
@@ -375,11 +374,20 @@ if __name__ == '__main__':
 	room_url = 'http://tiedao.vatuu.com/vatuu/CourseAction'
 	for i in range(1,8):
 		room(room_url,login.cookie,str(i))
-	
 	# course_url = 'http://tiedao.vatuu.com/vatuu/CourseAction?setAction=userCourseScheduleTable\
 		# &viewType=studentQueryCourseList&selectTableType=ThisTerm&queryType=student'
 	# score(login.url,login.cookie)
 	# course(course_url,login.cookie)
+
+if __name__ == '__main__':
+    # 创建后台执行的 schedulers
+    scheduler = BlockingScheduler()
+    # 添加调度任务
+    # 调度方法为 timedTask，触发器选择 interval(间隔性)，间隔时长为 2 秒
+    scheduler.add_job(my_test, 'interval', days=1,start_date='2019-3-31 06:00:00')
+    # 启动调度任务
+    scheduler.start()
+	
 	
 	
 """
